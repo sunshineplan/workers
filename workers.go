@@ -17,7 +17,11 @@ type Workers struct {
 }
 
 // NewWorkers creates a new Workers instance with a given size.
+// If n <= 0, runtime.GOMAXPROCS(0) will be used.
 func NewWorkers(n int64) *Workers {
+	if n <= 0 {
+		n = int64(runtime.GOMAXPROCS(0))
+	}
 	return &Workers{n, semaphore.NewWeighted(n)}
 }
 
@@ -69,4 +73,16 @@ func (w *Workers) Listen(ctx context.Context, c <-chan func()) {
 			}
 		}
 	}()
+}
+
+// Run executes jobs using DefaultWorkers from the Job interface until there are no more jobs.
+// It acquires a semaphore weight for each job and releases it when the job is done.
+func Run(ctx context.Context, job Job) error {
+	return DefaultWorkers.Run(ctx, job)
+}
+
+// Listen listens for jobs using DefaultWorkers from a channel and runs them concurrently.
+// It stops listening when the context is done or the channel is closed.
+func Listen(ctx context.Context, c <-chan func()) {
+	DefaultWorkers.Listen(ctx, c)
 }
