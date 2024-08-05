@@ -4,5 +4,5 @@ go 1.22
 
 require (
 	github.com/sunshineplan/utils v0.1.71
-	golang.org/x/sync v0.7.0
+	golang.org/x/sync v0.8.0
 )
