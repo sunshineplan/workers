@@ -29,7 +29,7 @@ func TestJobList(t *testing.T) {
 		res = append(res, i)
 		wg.Done()
 	}
-	list := NewJobList(NewWorkers(3), test)
+	list := NewJobList(3, test)
 	list.Start(context.Background())
 	go func() {
 		for {

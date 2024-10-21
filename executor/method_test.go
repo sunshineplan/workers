@@ -9,7 +9,7 @@ import (
 )
 
 func TestExecuteConcurrent1(t *testing.T) {
-	w := New[int, any](0)
+	w := Executor[int, any](0)
 	result, err := w.ExecuteConcurrentArg(
 		[]int{0, 1, 2},
 		func(n int) (any, error) {
@@ -37,7 +37,7 @@ func TestExecuteConcurrent1(t *testing.T) {
 }
 
 func TestExecuteConcurrent2(t *testing.T) {
-	w := New[int, any](0)
+	w := Executor[int, any](0)
 	result, err := w.ExecuteConcurrentFunc(
 		[]int{1},
 		func(n int) (any, error) {
@@ -79,7 +79,7 @@ func TestExecuteConcurrent2(t *testing.T) {
 }
 
 func TestExecuteSerial1(t *testing.T) {
-	w := New[int, any](0)
+	w := Executor[int, any](0)
 	result, err := w.ExecuteSerial(
 		[]int{0, 1, 2},
 		func(n int) (any, error) {
@@ -107,7 +107,7 @@ func TestExecuteSerial1(t *testing.T) {
 }
 
 func TestExecuteSerial2(t *testing.T) {
-	w := New[int, any](0)
+	w := Executor[int, any](0)
 	result, err := w.ExecuteSerial(
 		[]int{1},
 		func(n int) (any, error) {
@@ -149,7 +149,7 @@ func TestExecuteSerial2(t *testing.T) {
 }
 
 func TestExecuteRandom1(t *testing.T) {
-	w := New[string, any](0)
+	w := Executor[string, any](0)
 	testcase := []string{"a", "b", "c", "d", "e", "f", "g"}
 	var result []string
 	if _, err := w.ExecuteRandom(
@@ -184,7 +184,7 @@ func TestExecuteRandom1(t *testing.T) {
 }
 
 func TestExecuteRandom2(t *testing.T) {
-	w := New[any, any](0)
+	w := Executor[any, any](0)
 	var result []string
 	_, err := w.ExecuteRandom(
 		nil,
@@ -232,7 +232,7 @@ func TestExecuteRandom2(t *testing.T) {
 }
 
 func TestLimit(t *testing.T) {
-	w := New[int, any](0)
+	w := Executor[int, any](0)
 	_, err := w.Execute(
 		Serial,
 		Concurrent,
@@ -253,7 +253,7 @@ func TestLimit(t *testing.T) {
 		t.Errorf("expected error %s; got %v", expect, err)
 	}
 
-	w = New[int, any](1)
+	w = Executor[int, any](1)
 	_, err = w.Execute(
 		Serial,
 		Concurrent,

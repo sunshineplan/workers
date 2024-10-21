@@ -20,38 +20,24 @@ const (
 	Random
 )
 
-// Executor is a generic struct for managing job execution.
-type Executor[Arg, Res any] struct {
-	w *workers.Workers
-}
-
-// New creates a new Executor with a specified number of workers.
-// If n <= 0, it uses the default workers.
-func New[Arg, Res any](n int64) *Executor[Arg, Res] {
-	if n <= 0 {
-		return &Executor[Arg, Res]{workers.DefaultWorkers}
-	}
-	return &Executor[Arg, Res]{workers.NewWorkers(n)}
-}
+// Executor is a generic type for managing job execution.
+type Executor[Arg, Res any] int
 
 // Execute gets the result from the functions with several args by specified method.
 // If both argMethod and fnMethod is Concurrent, fnMethod will be first.
-func (e *Executor[Arg, Res]) Execute(argMethod, fnMethod Method, args []Arg, fn ...func(Arg) (Res, error)) (res Res, err error) {
+func (e Executor[Arg, Res]) Execute(argMethod, fnMethod Method, args []Arg, fn ...func(Arg) (Res, error)) (res Res, err error) {
 	if len(fn) == 0 {
 		err = errors.New("no function provided")
 		return
 	}
 
-	var clone []Arg
-	var count int
-	var nilArg bool
-	switch len(args) {
-	case 0:
-		nilArg = true
-	default:
-		count = len(args)
-		clone = make([]Arg, count)
-		copy(clone, args)
+	count := len(args)
+	var order []int
+	for i := range count {
+		order = append(order, i)
+	}
+	if argMethod == Random {
+		rand.Shuffle(count, func(i, j int) { order[i], order[j] = order[j], order[i] })
 	}
 
 	switch fnMethod {
@@ -59,11 +45,11 @@ func (e *Executor[Arg, Res]) Execute(argMethod, fnMethod Method, args []Arg, fn 
 		result := make(chan Res, 1)
 		lasterr := make(chan error, 1)
 
-		if nilArg {
+		if count == 0 {
 			ctx := argContext[Arg, Res](len(fn), *new(Arg))
 			defer ctx.cancel()
 
-			e.w.Run(context.Background(), workers.SliceJob(fn, func(_ int, fn func(Arg) (Res, error)) {
+			workers.Workers(e).Run(context.Background(), workers.SliceJob(fn, func(_ int, fn func(Arg) (Res, error)) {
 				ctx.runFn(fn, result, lasterr)
 			}))
 
@@ -74,13 +60,11 @@ func (e *Executor[Arg, Res]) Execute(argMethod, fnMethod Method, args []Arg, fn 
 			return <-result, nil
 		}
 
-		if argMethod == Random {
-			rand.Shuffle(count, func(i, j int) { clone[i], clone[j] = clone[j], clone[i] })
-		}
-
 		for i := range count {
-			ctx := argContext[Arg, Res](len(fn), clone[i])
-			e.w.Run(context.Background(), workers.SliceJob(fn, func(_ int, fn func(Arg) (Res, error)) {
+			ctx := argContext[Arg, Res](len(fn), args[order[i]])
+			defer ctx.cancel()
+
+			workers.Workers(e).Run(context.Background(), workers.SliceJob(fn, func(_ int, fn func(Arg) (Res, error)) {
 				ctx.runFn(fn, result, lasterr)
 			}))
 
@@ -90,7 +74,6 @@ func (e *Executor[Arg, Res]) Execute(argMethod, fnMethod Method, args []Arg, fn 
 			} else if i == count-1 {
 				return
 			}
-			ctx.cancel()
 		}
 	case Serial, Random:
 		if fnMethod == Random {
@@ -102,26 +85,24 @@ func (e *Executor[Arg, Res]) Execute(argMethod, fnMethod Method, args []Arg, fn 
 			lasterr := make(chan error, 1)
 
 			ctx := fnContext(count, f)
-			if nilArg {
+			defer ctx.cancel()
+
+			if count == 0 {
 				ctx.runArg(*new(Arg), result, lasterr)
 			} else {
-				var worker *workers.Workers
+				var w workers.Workers
 				switch argMethod {
 				case Concurrent:
-					worker = e.w
+					w = workers.Workers(e)
 				case Serial, Random:
-					worker = workers.NewWorkers(1)
+					w = 1
 				default:
 					err = errors.New("unknown arg method")
 					return
 				}
 
-				if argMethod == Random {
-					rand.Shuffle(count, func(i, j int) { clone[i], clone[j] = clone[j], clone[i] })
-				}
-
-				worker.Run(context.Background(), workers.SliceJob(clone, func(_ int, arg Arg) {
-					ctx.runArg(arg, result, lasterr)
+				w.Run(context.Background(), workers.SliceJob(order, func(_ int, i int) {
+					ctx.runArg(args[i], result, lasterr)
 				}))
 			}
 
@@ -131,7 +112,6 @@ func (e *Executor[Arg, Res]) Execute(argMethod, fnMethod Method, args []Arg, fn 
 			} else if i == len(fn)-1 {
 				return
 			}
-			ctx.cancel()
 		}
 	default:
 		err = errors.New("unknown function method")

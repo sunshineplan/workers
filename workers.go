@@ -8,49 +8,42 @@ import (
 )
 
 // DefaultWorkers is a default instance of Workers with the size of GOMAXPROCS.
-var DefaultWorkers = NewWorkers(int64(runtime.GOMAXPROCS(0)))
+var DefaultWorkers = Workers(runtime.GOMAXPROCS(0))
 
-// Workers struct holds the size and semaphore for managing concurrent jobs.
-type Workers struct {
-	size int64
-	w    *semaphore.Weighted
-}
+// Workers holds the size and semaphore for managing concurrent jobs.
+type Workers int
 
-// NewWorkers creates a new Workers instance with a given size.
-// If n <= 0, runtime.GOMAXPROCS(0) will be used.
-func NewWorkers(n int64) *Workers {
-	if n <= 0 {
-		n = int64(runtime.GOMAXPROCS(0))
+func (i Workers) weight() int64 {
+	if i <= 0 {
+		return int64(runtime.GOMAXPROCS(0))
 	}
-	return &Workers{n, semaphore.NewWeighted(n)}
-}
-
-// Size returns the size of the Workers.
-func (w Workers) Size() int64 {
-	return w.size
+	return int64(i)
 }
 
 // Run executes jobs from the Job interface until there are no more jobs.
 // It acquires a semaphore weight for each job and releases it when the job is done.
-func (w *Workers) Run(ctx context.Context, job Job) (err error) {
+func (i Workers) Run(ctx context.Context, job Job) (err error) {
+	weight := i.weight()
+	w := semaphore.NewWeighted(weight)
 	for f := job.Next(); f != nil; f = job.Next() {
-		if err = w.w.Acquire(ctx, 1); err != nil {
+		if err = w.Acquire(ctx, 1); err != nil {
 			return
 		}
 		go func() {
-			defer w.w.Release(1)
+			defer w.Release(1)
 			f()
 		}()
 	}
-	if err = w.w.Acquire(ctx, w.size); err == nil {
-		w.w.Release(w.size)
+	if err = w.Acquire(ctx, weight); err == nil {
+		w.Release(weight)
 	}
 	return
 }
 
 // Listen listens for jobs from a channel and runs them concurrently.
 // It stops listening when the context is done or the channel is closed.
-func (w *Workers) Listen(ctx context.Context, c <-chan func()) {
+func (i Workers) Listen(ctx context.Context, c <-chan func()) {
+	w := semaphore.NewWeighted(i.weight())
 	go func() {
 		for {
 			select {
@@ -63,11 +56,11 @@ func (w *Workers) Listen(ctx context.Context, c <-chan func()) {
 				if job == nil {
 					continue
 				}
-				if err := w.w.Acquire(ctx, 1); err != nil {
+				if err := w.Acquire(ctx, 1); err != nil {
 					return
 				}
 				go func() {
-					defer w.w.Release(1)
+					defer w.Release(1)
 					job()
 				}()
 			}
