@@ -7,7 +7,7 @@ import (
 
 func TestSkip(t *testing.T) {
 	tmp := errors.New("error")
-	w := New[int, any](0)
+	w := Executor[int, any](0)
 	if _, err := w.ExecuteSerial(
 		[]int{0, 1, 2},
 		func(n int) (any, error) {

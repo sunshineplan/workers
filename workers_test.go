@@ -26,7 +26,7 @@ func TestFunction(t *testing.T) {
 	); err != nil && err != context.DeadlineExceeded {
 		t.Fatal(err)
 	}
-	if expect, n := DefaultWorkers.size, n.Load(); n != expect {
+	if expect, n := DefaultWorkers.weight(), n.Load(); n != expect {
 		t.Errorf("expected %v; got %v", expect, n)
 	}
 }

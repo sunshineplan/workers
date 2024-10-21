@@ -13,15 +13,15 @@ import (
 type JobList[T any] struct {
 	mu     sync.Mutex
 	l      *cache.List[T]
-	w      *Workers
+	w      Workers
 	f      func(T)
 	c      chan struct{}
 	closed bool
 }
 
 // NewJobList creates a new JobList with the given worker pool and job function.
-func NewJobList[T any](w *Workers, f func(T)) *JobList[T] {
-	return &JobList[T]{l: cache.NewList[T](), w: w, f: f}
+func NewJobList[T any](workers int, f func(T)) *JobList[T] {
+	return &JobList[T]{l: cache.NewList[T](), w: Workers(workers), f: f}
 }
 
 // Start begins processing jobs in the job list using the provided context.
