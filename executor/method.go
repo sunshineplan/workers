@@ -122,21 +122,21 @@ func (e Executor[Arg, Res]) Execute(argMethod, fnMethod Method, args []Arg, fn .
 }
 
 // ExecuteConcurrentArg gets the fastest result from the functions with args, args will be run concurrently.
-func (e *Executor[Arg, Res]) ExecuteConcurrentArg(arg []Arg, fn ...func(Arg) (Res, error)) (Res, error) {
+func (e Executor[Arg, Res]) ExecuteConcurrentArg(arg []Arg, fn ...func(Arg) (Res, error)) (Res, error) {
 	return e.Execute(Concurrent, Serial, arg, fn...)
 }
 
 // ExecuteConcurrentFunc gets the fastest result from the functions with args, functions will be run concurrently.
-func (e *Executor[Arg, Res]) ExecuteConcurrentFunc(arg []Arg, fn ...func(Arg) (Res, error)) (Res, error) {
+func (e Executor[Arg, Res]) ExecuteConcurrentFunc(arg []Arg, fn ...func(Arg) (Res, error)) (Res, error) {
 	return e.Execute(Serial, Concurrent, arg, fn...)
 }
 
 // ExecuteSerial gets the result until success from the functions with args in order.
-func (e *Executor[Arg, Res]) ExecuteSerial(arg []Arg, fn ...func(Arg) (Res, error)) (Res, error) {
+func (e Executor[Arg, Res]) ExecuteSerial(arg []Arg, fn ...func(Arg) (Res, error)) (Res, error) {
 	return e.Execute(Serial, Serial, arg, fn...)
 }
 
 // ExecuteRandom gets the result until success from the functions with args randomly.
-func (e *Executor[Arg, Res]) ExecuteRandom(arg []Arg, fn ...func(Arg) (Res, error)) (Res, error) {
+func (e Executor[Arg, Res]) ExecuteRandom(arg []Arg, fn ...func(Arg) (Res, error)) (Res, error) {
 	return e.Execute(Random, Random, arg, fn...)
 }
