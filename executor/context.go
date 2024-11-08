@@ -78,8 +78,15 @@ func (ctx *ctx[Arg, Res]) run(executor func(chan<- Res, chan<- error), rc chan<-
 		} else {
 			ctx.cancel()
 
-			rc <- <-r
-			ec <- nil
+			select {
+			case rc <- <-r:
+			default:
+			}
+
+			select {
+			case ec <- nil:
+			default:
+			}
 		}
 	}
 }
