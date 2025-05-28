@@ -5,14 +5,14 @@ import (
 	"errors"
 	"sync"
 
-	"github.com/sunshineplan/utils/cache"
+	"github.com/sunshineplan/utils/container"
 )
 
 // JobList is a struct that holds a list of jobs, a worker pool, a function to execute jobs,
 // a channel for signaling, and a boolean indicating if the job list is closed.
 type JobList[T any] struct {
 	mu     sync.Mutex
-	l      *cache.List[T]
+	l      *container.List[T]
 	w      Workers
 	f      func(T)
 	c      chan struct{}
@@ -21,7 +21,7 @@ type JobList[T any] struct {
 
 // NewJobList creates a new JobList with the given worker pool and job function.
 func NewJobList[T any](workers int, f func(T)) *JobList[T] {
-	return &JobList[T]{l: cache.NewList[T](), w: Workers(workers), f: f}
+	return &JobList[T]{l: container.NewList[T](), w: Workers(workers), f: f}
 }
 
 // Start begins processing jobs in the job list using the provided context.
