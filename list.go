@@ -34,10 +34,11 @@ func (l *JobList[T]) Start(ctx context.Context) error {
 	if l.c != nil {
 		return errors.New("job list is already started")
 	}
-	l.c = make(chan struct{})
+	l.c = make(chan struct{}, 1)
 	c := make(chan func())
 	l.w.Listen(ctx, c)
 	go func() {
+		defer close(c)
 		for {
 			select {
 			case <-ctx.Done():
@@ -45,17 +46,19 @@ func (l *JobList[T]) Start(ctx context.Context) error {
 				return
 			case _, ok := <-l.c:
 				if !ok {
-					close(c)
 					return
 				}
-				if e := l.l.Front(); e != nil {
-					c <- func() { l.f(e.Value()) }
-					l.l.Remove(e)
+				for {
+					e := l.l.Front()
+					if e == nil {
+						break
+					}
+					v := l.l.Remove(e)
+					c <- func() { l.f(v) }
 				}
 			}
 		}
 	}()
-	l.closed = false
 	return nil
 }
 
@@ -67,14 +70,6 @@ func (l *JobList[T]) Close() error {
 		return errors.New("job list is already closed")
 	}
 	l.l.Init()
-	for {
-		select {
-		case <-l.c:
-			continue
-		default:
-		}
-		break
-	}
 	close(l.c)
 	l.closed = true
 	return nil
@@ -91,7 +86,10 @@ func (l *JobList[T]) PushBack(v T) error {
 		return errors.New("job list is not started")
 	}
 	l.l.PushBack(v)
-	go func() { l.c <- struct{}{} }()
+	select {
+	case l.c <- struct{}{}:
+	default:
+	}
 	return nil
 }
 
@@ -106,6 +104,9 @@ func (l *JobList[T]) PushFront(v T) error {
 		return errors.New("job list is not started")
 	}
 	l.l.PushFront(v)
-	go func() { l.c <- struct{}{} }()
+	select {
+	case l.c <- struct{}{}:
+	default:
+	}
 	return nil
 }
