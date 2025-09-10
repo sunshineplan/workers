@@ -38,10 +38,10 @@ func TestJobList(t *testing.T) {
 	if n := list.l.Len(); n != 0 {
 		t.Fatalf("expected 0; got %d", n)
 	}
-	log.Print(res, res[:2], res[2:4], res[4], res[5:7], res[7])
+	log.Print(res, res[:2], res[2:4], res[4], res[5:8])
 	slices.Sort(res[:2])
 	slices.Sort(res[2:4])
-	slices.Sort(res[5:7])
+	slices.Sort(res[5:8])
 	if expect := []int{1, 2, 0, 4, 5, 0, 7, 8}; !reflect.DeepEqual(expect, res) {
 		t.Errorf("expected %v; got %v", expect, res)
 	}
