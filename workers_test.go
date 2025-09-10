@@ -124,8 +124,7 @@ func TestListen(t *testing.T) {
 			m.Unlock()
 		}
 	}
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	DefaultWorkers.Listen(ctx, c)
 	wg.Wait()
 	sort.Strings(result)

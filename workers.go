@@ -2,7 +2,9 @@ package workers
 
 import (
 	"context"
+	"log"
 	"runtime"
+	"runtime/debug"
 
 	"golang.org/x/sync/semaphore"
 )
@@ -25,18 +27,32 @@ func (i Workers) weight() int64 {
 func (i Workers) Run(ctx context.Context, job Job) (err error) {
 	weight := i.weight()
 	w := semaphore.NewWeighted(weight)
-	for f := job.Next(); f != nil; f = job.Next() {
+	for {
 		if err = w.Acquire(ctx, 1); err != nil {
 			return
 		}
+		f, next := job.Next()
+		if f == nil {
+			w.Release(1)
+			break
+		}
 		go func() {
 			defer w.Release(1)
+			defer func() {
+				if err := recover(); err != nil {
+					log.Printf("panic: %v\n%s", err, debug.Stack())
+				}
+			}()
 			f()
 		}()
+		if !next {
+			break
+		}
 	}
-	if err = w.Acquire(ctx, weight); err == nil {
-		w.Release(weight)
+	if err = w.Acquire(ctx, weight); err != nil {
+		return
 	}
+	w.Release(weight)
 	return
 }
 
@@ -46,6 +62,9 @@ func (i Workers) Listen(ctx context.Context, c <-chan func()) {
 	w := semaphore.NewWeighted(i.weight())
 	go func() {
 		for {
+			if err := w.Acquire(ctx, 1); err != nil {
+				return
+			}
 			select {
 			case <-ctx.Done():
 				return
@@ -53,16 +72,19 @@ func (i Workers) Listen(ctx context.Context, c <-chan func()) {
 				if !ok {
 					return
 				}
-				if job == nil {
-					continue
+				if job != nil {
+					go func() {
+						defer w.Release(1)
+						defer func() {
+							if err := recover(); err != nil {
+								log.Printf("panic: %v\n%s", err, debug.Stack())
+							}
+						}()
+						job()
+					}()
+				} else {
+					w.Release(1)
 				}
-				if err := w.Acquire(ctx, 1); err != nil {
-					return
-				}
-				go func() {
-					defer w.Release(1)
-					job()
-				}()
 			}
 		}
 	}()
