@@ -4,5 +4,5 @@ go 1.25
 
 require (
 	github.com/sunshineplan/utils v0.1.82
-	golang.org/x/sync v0.17.0
+	golang.org/x/sync v0.18.0
 )
